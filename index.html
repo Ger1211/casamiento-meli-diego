@@ -917,12 +917,30 @@ welcomeBtn.addEventListener('click', ()=>{
 });
 
 // Music toggle
+let userPaused = false;
 musicBtn.addEventListener('click', ()=>{
   if(audio.paused){
+    userPaused = false;
     audio.play().then(()=>{ musicBtn.classList.remove('paused'); }).catch(()=>{});
   } else {
+    userPaused = true;
     audio.pause();
     musicBtn.classList.add('paused');
+  }
+});
+
+// Pause music when app goes to background (mobile)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    if(!audio.paused){
+      audio.pause();
+      musicBtn.classList.add('paused');
+    }
+  } else {
+    // Page became visible again
+    if(!userPaused && audio.paused){
+      audio.play().then(()=>{ musicBtn.classList.remove('paused'); }).catch(()=>{});
+    }
   }
 });
 
