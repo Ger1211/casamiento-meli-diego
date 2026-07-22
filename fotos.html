@@ -295,7 +295,7 @@ body{
 
 <script>
 
-const API_BASE_URL = 'https://rrrdp-186-123-136-142.free.pinggy.net';
+const API_BASE_URL = 'https://thomas-aus-concept-jpeg.trycloudflare.com';
 
 const fileInput = document.getElementById('file-input');
 const fileLabelText = document.getElementById('file-label-text');
@@ -341,7 +341,6 @@ submitBtn.addEventListener('click', async () => {
   try {
     const resp = await fetch(`${API_BASE_URL}/api/upload`, {
       method: 'POST',
-      headers: { 'X-Pinggy-No-Screen': 'true' },
       body: formData
     });
     const data = await resp.json();
@@ -379,9 +378,7 @@ async function loadGallery() {
   }
 
   try {
-    const resp = await fetch(`${API_BASE_URL}/api/photos?page=${currentPage}&size=${PAGE_SIZE}`, {
-      headers: { 'X-Pinggy-No-Screen': 'true' }
-    });
+    const resp = await fetch(`${API_BASE_URL}/api/photos?page=${currentPage}&size=${PAGE_SIZE}`);
     const data = await resp.json();
 
     galleryGrid.innerHTML = '';
