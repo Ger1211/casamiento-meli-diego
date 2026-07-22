@@ -444,6 +444,12 @@ let selectedFiles = [];
 let currentPage = 0;
 const PAGE_SIZE = 6;
 
+function resolveThumbUrl(thumb) {
+  if (!thumb) return '';
+  if (thumb.startsWith('data:') || thumb.startsWith('http')) return thumb;
+  return API_BASE_URL + thumb;
+}
+
 function handleFileSelect(e) {
   const newFiles = Array.from(e.target.files);
   if (newFiles.length === 0) return;
@@ -585,12 +591,12 @@ async function loadGallery() {
       item.className = 'gallery-item';
       if (photo.thumbnail) {
         const img = document.createElement('img');
-        img.src = photo.thumbnail;
+        img.src = resolveThumbUrl(photo.thumbnail);
         img.alt = 'Foto';
         img.loading = 'lazy';
         img.style.cursor = 'pointer';
         img.addEventListener('click', () => {
-          lightboxImg.src = photo.thumbnail;
+          lightboxImg.src = resolveThumbUrl(photo.thumbnail);
           lightbox.classList.add('active');
         });
         item.appendChild(img);
