@@ -281,6 +281,57 @@ body{
 }
 .lightbox-close:hover{ opacity:.7; }
 
+/* ===== SELECTED FILES LIST ===== */
+.file-list{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:16px;
+  min-height:0;
+}
+.file-tag{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  background:var(--marfil);
+  border:1px solid var(--arena);
+  border-radius:6px;
+  font-size:.78rem;
+  color:var(--ink-soft);
+  max-width:100%;
+}
+.file-tag .thumb{
+  width:36px;
+  height:36px;
+  border-radius:4px;
+  object-fit:cover;
+  flex-shrink:0;
+}
+.file-tag .name{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  max-width:180px;
+}
+.file-tag .remove{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  border:none;
+  background:var(--arena);
+  color:var(--ink-soft);
+  cursor:pointer;
+  font-size:.85rem;
+  line-height:1;
+  flex-shrink:0;
+  transition:background .2s;
+}
+.file-tag .remove:hover{ background:var(--bordo); color:var(--marfil-2); }
+
 /* ===== UPLOAD BUTTONS ===== */
 .upload-buttons{
   display:flex;
@@ -332,8 +383,9 @@ body{
         Elegir de galeria
       </label>
     </div>
-    <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none">
-    <input type="file" id="gallery-input" accept="image/*" style="display:none">
+    <input type="file" id="camera-input" accept="image/*" capture="environment" multiple style="display:none">
+    <input type="file" id="gallery-input" accept="image/*" multiple style="display:none">
+    <div class="file-list" id="file-list"></div>
     <div class="file-name" id="file-name"></div>
 
     <div class="field">
@@ -373,7 +425,8 @@ const API_BASE_URL = 'https://desktop-udmt3js.tailfe106b.ts.net';
 
 const cameraInput = document.getElementById('camera-input');
 const galleryInput = document.getElementById('gallery-input');
-const fileName = document.getElementById('file-name');
+const fileList = document.getElementById('file-list');
+const fileCount = document.getElementById('file-name');
 const guestNameInput = document.getElementById('guest-name');
 const submitBtn = document.getElementById('submit-btn');
 const statusMsg = document.getElementById('status-msg');
@@ -387,25 +440,72 @@ const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightbox-img');
 const lightboxClose = document.getElementById('lightbox-close');
 
-let selectedFile = null;
+let selectedFiles = [];
 let currentPage = 0;
 const PAGE_SIZE = 6;
 
 function handleFileSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  selectedFile = file;
-  fileName.textContent = file.name;
-  submitBtn.disabled = false;
+  const newFiles = Array.from(e.target.files);
+  if (newFiles.length === 0) return;
+
+  selectedFiles = [...selectedFiles, ...newFiles];
+  renderFileList();
   statusMsg.textContent = '';
   statusMsg.className = 'status-msg';
+}
+
+function renderFileList() {
+  fileList.innerHTML = '';
+
+  if (selectedFiles.length === 0) {
+    fileCount.textContent = '';
+    submitBtn.textContent = 'Subir foto';
+    submitBtn.disabled = true;
+    return;
+  }
+
+  selectedFiles.forEach((file, index) => {
+    const tag = document.createElement('div');
+    tag.className = 'file-tag';
+
+    const thumb = document.createElement('img');
+    thumb.className = 'thumb';
+    thumb.src = URL.createObjectURL(file);
+    tag.appendChild(thumb);
+
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = file.name;
+    tag.appendChild(name);
+
+    const remove = document.createElement('button');
+    remove.className = 'remove';
+    remove.innerHTML = '&times;';
+    remove.title = 'Quitar ' + file.name;
+    remove.addEventListener('click', () => removeFile(index));
+    tag.appendChild(remove);
+
+    fileList.appendChild(tag);
+  });
+
+  fileCount.textContent = selectedFiles.length + ' foto(s) seleccionada(s)';
+  submitBtn.textContent = selectedFiles.length > 1
+    ? 'Subir ' + selectedFiles.length + ' fotos'
+    : 'Subir foto';
+  submitBtn.disabled = false;
+}
+
+function removeFile(index) {
+  URL.revokeObjectURL(fileList.querySelectorAll('.thumb')[index].src);
+  selectedFiles.splice(index, 1);
+  renderFileList();
 }
 
 cameraInput.addEventListener('change', handleFileSelect);
 galleryInput.addEventListener('change', handleFileSelect);
 
 submitBtn.addEventListener('click', async () => {
-  if (!selectedFile) return;
+  if (selectedFiles.length === 0) return;
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Subiendo...';
@@ -413,7 +513,7 @@ submitBtn.addEventListener('click', async () => {
   statusMsg.className = 'status-msg';
 
   const formData = new FormData();
-  formData.append('files', selectedFile);
+  selectedFiles.forEach(file => formData.append('files', file));
   const guestName = guestNameInput.value.trim();
   if (guestName) formData.append('guestName', guestName);
 
@@ -425,13 +525,16 @@ submitBtn.addEventListener('click', async () => {
     const data = await resp.json();
 
     if (data.success && data.uploaded > 0) {
-      statusMsg.textContent = 'Las fotos se subieron correctamente.';
+      statusMsg.textContent = data.message || 'Las fotos se subieron correctamente.';
       statusMsg.className = 'status-msg success';
       cameraInput.value = '';
       galleryInput.value = '';
-      selectedFile = null;
-      fileName.textContent = '';
-      submitBtn.disabled = true;
+      selectedFiles.forEach((_, i) => {
+        const thumb = fileList.querySelectorAll('.thumb')[i];
+        if (thumb) URL.revokeObjectURL(thumb.src);
+      });
+      selectedFiles = [];
+      renderFileList();
       guestNameInput.value = '';
       currentPage = 0;
       loadGallery();
@@ -445,7 +548,7 @@ submitBtn.addEventListener('click', async () => {
   }
 
   submitBtn.textContent = 'Subir foto';
-  submitBtn.disabled = !selectedFile;
+  submitBtn.disabled = selectedFiles.length === 0;
 });
 
 async function loadGallery() {
